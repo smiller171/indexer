@@ -1,0 +1,67 @@
+services:
+  surreal:
+    image: surrealdb/surrealdb:nightly
+    command: ["start", "--bind", "0.0.0.0:8000", "file:surreal.db"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - db-data:/surrealdb/surreal.db:rw,Z
+    networks:
+      - db
+    healthcheck:
+      test: ["CMD", "is-ready"]
+      interval: 20s
+      timeout: 2s
+      retries: 1
+      start_period: 60s
+      start_interval: 2s
+
+  setup_surreal:
+    build:
+      context: .
+      target: setup_surreal
+      tags:
+        - surreal-setup
+    depends_on:
+      surreal:
+        condition: service_healthy
+    networks:
+      - db
+
+  firehose_indexer:
+    build:
+      context: .
+      target: firehose_indexer
+      tags:
+        - firehose-indexer
+    depends_on:
+      surreal:
+        condition: service_healthy
+      setup_surreal:
+        condition: service_completed_successfully
+    networks:
+      - backend
+      - db
+
+  historical_indexer:
+    build:
+      context: .
+      target: historical_indexer
+      tags:
+        - historical-indexer
+    depends_on:
+      surreal:
+        condition: service_healthy
+      setup_surreal:
+        condition: service_completed_successfully
+    networks:
+      - backend
+      - db
+
+volumes:
+  db-data: {}
+
+networks:
+  # The presence of these objects is sufficient to define them
+  backend: {}
+  db: {}

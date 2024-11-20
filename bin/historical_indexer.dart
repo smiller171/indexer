@@ -168,6 +168,7 @@ Future<void> processRepo(String did) async {
               parts[1],
               block.cast<String, dynamic>(),
               surreal: surreal,
+              doRethrow: true,
             );
           }
         }
